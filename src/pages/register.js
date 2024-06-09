@@ -3,6 +3,7 @@ import React, { useState } from "react";
 import { RegistrationformFields } from "@/data";
 import "../app/globals.css";
 import Link from "next/link";
+import { account } from "../lib/appwrite";
 
 export default function Register() {
   const [formData, setFormData] = useState({

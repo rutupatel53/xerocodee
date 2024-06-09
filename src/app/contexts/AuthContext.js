@@ -1,55 +1,93 @@
-// "use client";
-// import React, { createContext, useContext, useEffect, useState } from "react";
-// import { account } from "../../lib/appwrite";
-// import { useRouter } from "next/navigation"; // Correct import
+import { createContext, useState, useEffect, useContext } from "react";
+import { account } from "../../lib/appwrite";
+import { useNavigate } from "react-router-dom";
+import { ID } from "appwrite";
 
-// const AuthContext = createContext();
+const AuthContext = createContext();
 
-// export function AuthProvider({ children }) {
-//   const [user, setUser] = useState(null);
-//   const [loading, setLoading] = useState(true);
-//   const router = useRouter();
+export const AuthProvider = ({ children }) => {
+  const navigate = useNavigate();
 
-//   useEffect(() => {
-//     const getSession = async () => {
-//       try {
-//         const user = await account.get();
-//         setUser(user);
-//       } catch (error) {
-//         setUser(null);
-//       }
-//     };
+  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState(null);
 
-//     getSession();
-//   }, []);
+  useEffect(() => {
+    //setLoading(false)
+    checkUserStatus();
+  }, []);
 
-//   const login = async (email, password) => {
-//     try {
-//       const session = await account.createSession(email, password);
-//       setUser(session);
-//       router.push("/welcome");
-//     } catch (error) {
-//       console.error("Login failed:", error.message);
-//     }
-//   };
+  const loginUser = async (userInfo) => {
+    setLoading(true);
 
-//   const logout = async () => {
-//     try {
-//       await account.deleteSession("current");
-//       setUser(null);
-//       router.push("/login");
-//     } catch (error) {
-//       console.error("Logout failed:", error.message);
-//     }
-//   };
+    console.log("userInfo", userInfo);
 
-//   return (
-//     <AuthContext.Provider value={{ user, login, logout }}>
-//       {children}
-//     </AuthContext.Provider>
-//   );
-// }
+    try {
+      let response = await account.createEmailSession(
+        userInfo.email,
+        userInfo.password
+      );
+      let accountDetails = await account.get();
+      setUser(accountDetails);
+    } catch (error) {
+      console.error(error);
+    }
+    setLoading(false);
+  };
 
-// export function useAuth() {
-//   return useContext(AuthContext);
-// }
+  const logoutUser = async () => {
+    await account.deleteSession("current");
+    setUser(null);
+  };
+
+  const registerUser = async (userInfo) => {
+    setLoading(true);
+
+    try {
+      let response = await account.create(
+        ID.unique(),
+        userInfo.email,
+        userInfo.firstName,
+        userInfo.lastName,
+        userInfo.password,
+        userInfo.confirmPassword
+      );
+
+      await account.createEmailSession(userInfo.email, userInfo.password);
+      let accountDetails = await account.get();
+      setUser(accountDetails);
+      navigate("/");
+    } catch (error) {
+      console.error(error);
+    }
+
+    setLoading(false);
+  };
+
+  const checkUserStatus = async () => {
+    try {
+      let accountDetails = await account.get();
+      setUser(accountDetails);
+    } catch (error) {}
+    setLoading(false);
+  };
+
+  const contextData = {
+    user,
+    loginUser,
+    logoutUser,
+    registerUser,
+  };
+
+  return (
+    <AuthContext.Provider value={contextData}>
+      {loading ? <p>Loading...</p> : children}
+    </AuthContext.Provider>
+  );
+};
+
+//Custom Hook
+export const useAuth = () => {
+  return useContext(AuthContext);
+};
+
+export default AuthContext;
